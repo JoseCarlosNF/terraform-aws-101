@@ -14,8 +14,17 @@ resource "random_id" "_" {
 
 variable "region" {
   default = {
-    homologacao   = "us-east-1"
-    producao = "sa-east-1"
+    homologacao = "us-east-1"
+    producao    = "sa-east-1"
+  }
+}
+
+locals {
+  resource_name = "JoseCarlosNF-${random_id._.hex}"
+  project_name  = "terraform-aws-101-${random_id._.hex}"
+  common_tags = {
+    Name    = local.resource_name
+    Project = local.project_name
   }
 }
 
@@ -45,18 +54,16 @@ data "aws_ami" "ubuntu" {
 
 # ----------------------- Definição da instância EC2 -------------------------
 resource "aws_instance" "ubuntu_server" {
-  instance_type = "t4g.nano"
-  ami           = data.aws_ami.ubuntu.id
-  depends_on    = [tls_private_key.ssh_key]
-  key_name      = aws_key_pair.ssh_key_generated.key_name
-  tags = {
-    Name    = "JoseCarlosNF-${random_id._.hex}"
-    Project = "terraform-aws-101-${random_id._.hex}"
-  }
+  instance_type   = "t4g.nano"
+  ami             = data.aws_ami.ubuntu.id
+  depends_on      = [tls_private_key.ssh_key]
+  key_name        = aws_key_pair.ssh_key_generated.key_name
+  security_groups = [aws_security_group.allow_http_ssh.name]
+  tags            = local.common_tags
 }
 
 output "public_ip_adress" {
-  value = "${aws_instance.ubuntu_server.public_ip}"
+  value = aws_instance.ubuntu_server.public_ip
 }
 
 # ---------------------- Geração do par de chaves SSH ------------------------
@@ -75,4 +82,54 @@ resource "aws_key_pair" "ssh_key_generated" {
       chmod 600 ssh_key_aws.pem
     EOT
   }
+}
+
+# ----------------------------- Security group -------------------------------
+resource "aws_security_group" "allow_http_ssh" {
+  name = local.project_name
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = local.common_tags
+}
+
+/*
+------------------ Permite tráfego interno no Security group ------------------
+
+Dessa forma, o tráfego entre os recursos que estão usando o security group
+declarado, aconteçera de forma livre.
+*/
+resource "aws_security_group_rule" "allow_traffic_inside_sg" {
+  security_group_id = aws_security_group.allow_http_ssh.id
+  type              = "ingress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = -1
+  self              = true
 }
