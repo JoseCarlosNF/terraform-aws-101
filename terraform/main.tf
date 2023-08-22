@@ -133,3 +133,21 @@ resource "aws_security_group_rule" "allow_traffic_inside_sg" {
   protocol          = -1
   self              = true
 }
+
+# -------------------------------- Route 53 ----------------------------------
+resource "aws_route53_zone" "josecarlosnf_tech" {
+  name = "josecarlosnf.cloud"
+  tags = local.common_tags
+}
+
+resource "aws_route53_record" "terraform-aws-101_josecarlosnf_tech" {
+  zone_id = aws_route53_zone.josecarlosnf_tech.zone_id
+  name    = "${local.project_name}.${aws_route53_zone.josecarlosnf_tech.name}"
+  type    = "A"
+  ttl     = 30
+  records = [aws_instance.ubuntu_server.public_ip]
+}
+
+output "url" {
+  value = "https://${aws_route53_record.terraform-aws-101_josecarlosnf_tech.name}"
+}
