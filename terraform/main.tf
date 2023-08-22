@@ -55,6 +55,10 @@ resource "aws_instance" "ubuntu_server" {
   }
 }
 
+output "public_ip_adress" {
+  value = "${aws_instance.ubuntu_server.public_ip}"
+}
+
 # ---------------------- Geração do par de chaves SSH ------------------------
 resource "tls_private_key" "ssh_key" {
   algorithm = "RSA"
