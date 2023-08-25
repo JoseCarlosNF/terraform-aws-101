@@ -8,6 +8,7 @@ RUN pip install --upgrade pip && \
 COPY app/ .
 
 EXPOSE 8000
+USER nobody
 
 # --------------------------- Environments Images -----------------------------
 FROM base AS development
